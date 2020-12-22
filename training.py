@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 import configparser
 from .Dataset.dataset import data_set, get_dataloaders
 from torch.utils.data import DataLoader
+from .config import *
 
 
 
@@ -28,8 +29,6 @@ np.random.seed(2)
 
 
 def main():
-    config = configparser.ConfigParser()
-    config.read('config.ini')
 
 
     plot_dl = config.getboolean('Params', 'plot_dataloaders')
