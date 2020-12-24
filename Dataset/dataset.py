@@ -11,14 +11,13 @@ sometimes = lambda aug: iaa.Sometimes(0.3, aug)
 
 
 class data_set(Dataset):
-    def __init__(self, h5_file_path, img_w, img_h, num_of_classes, mode):
+    def __init__(self, h5_file_path, img_w, img_h, mode):
         self.file = h5py.File(h5_file_path, 'r')
         self.mode = mode
         self.img_h, self.img_w = img_h, img_w
         self.mean_mat = np.tile(np.array([0.485, 0.456, 0.406]), [self.img_h, self.img_w, 1])
         self.std_mat = np.tile(np.array([0.229, 0.224, 0.225]), [self.img_h, self.img_w, 1])
         self.crop_w, self.crop_h = np.random.randint(200, max(img_h, img_w), size=(2,))
-        self.num_of_classes = num_of_classes
 
     def __len__(self):
         return len(self.file['data'])
@@ -38,15 +37,16 @@ class data_set(Dataset):
             # norm_img = np.divide(normalized_img - self.mean_mat, self.std_mat)
             norm_img = (2 * (img / 255)) - 1
 
-            gt_one_hot = (np.arange(self.num_of_classes) == gt_map[..., None]).astype(int)
+            # gt_one_hot = (np.arange(self.num_of_classes) == gt_map[..., None]).astype(int)
             return {'image': np.moveaxis(norm_img, -1, 0),
-                    'gt': np.moveaxis(gt_one_hot, -1, 0),
+                    # 'gt': np.moveaxis(gt_one_hot, -1, 0),
                     'gt_reg_map': gt_map,
                     'idx': idx}
 
         else:
             segmap = SegmentationMapsOnImage(gt_map, shape=img.shape)
-            seq = iaa.Sequential([iaa.CropToFixedSize(width=self.crop_w, height=self.crop_h),
+            seq = iaa.Sequential([
+                                #   iaa.CropToFixedSize(width=self.crop_w, height=self.crop_h),
                                   sometimes(iaa.OneOf([iaa.GaussianBlur((0, 3.0)),
                                                        iaa.AverageBlur(k=(2, 4)),
                                                        ])),
@@ -57,7 +57,7 @@ class data_set(Dataset):
                                   #            iaa.GammaContrast((0.5, 2.0), per_channel=True),
                                   #            iaa.LogContrast(gain=(0.6, 1.4))]),
                                   # sometimes(iaa.JpegCompression(compression=(80, 99))),
-                                  sometimes(iaa.CropAndPad(percent=(-0.5, 0.5))),
+                                #   sometimes(iaa.CropAndPad(percent=(-0.5, 0.5))),
                                   sometimes(iaa.Grayscale(alpha=(0.0, 1.0)))
                                   ])
             # pdb.set_trace()
@@ -70,10 +70,10 @@ class data_set(Dataset):
             # normalized_img = np.true_divide(augmented_img, augmented_img.max())
             # norm_img = np.true_divide(normalized_img - self.mean_mat, self.std_mat)
             norm_img = (2 * (augmented_img / 255)) - 1
-            gt_one_hot = (np.arange(self.num_of_classes) == augmented_map[..., None]).astype(int)
+            # gt_one_hot = (np.arange(self.num_of_classes) == augmented_map[..., None]).astype(int)
             # pdb.set_trace()
             sample = {'image': np.moveaxis(norm_img, -1, 0),
-                      'gt': np.moveaxis(gt_one_hot, -1, 0),
+                    #   'gt': np.moveaxis(gt_one_hot, -1, 0),
                       'gt_reg_map': augmented_map,
                       'idx': idx}
             return sample
@@ -81,14 +81,15 @@ class data_set(Dataset):
 
 def get_dataloaders(config):
     data_folder = config['Paths']['data_folder']
-    batch_size = config.getint('Params', 'batch_size')
+    batch_size = config['Params']['batch_size']
+    img_h, img_w = config['Params']['target_size']
 
     train_dataset = data_set(h5_file_path=os.path.join(data_folder, 'train_data.h5'),
-                             img_w=400, img_h=600, mode='train')
+                             img_w=img_w, img_h=img_h, mode='train')
     val_dataset = data_set(h5_file_path=os.path.join(data_folder, 'val_data.h5'),
-                           img_w=400, img_h=600, mode='val')
+                           img_w=img_w, img_h=img_h, mode='val')
     test_dataset = data_set(h5_file_path=os.path.join(data_folder, 'test_data.h5'),
-                            img_w=400, img_h=600, mode='test')
+                            img_w=img_w, img_h=img_h, mode='test')
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
     test_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
